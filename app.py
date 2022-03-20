@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import streamlit as st
+from sklearn.feature_selection import chi2
 from utils import seed_everything, INDEX2LEVEL, LEVEL2INDEX
 from preprocess import word_tokenize, clean_dialogue
 
@@ -21,6 +22,25 @@ st.set_page_config(page_title='eSalesHub Dashboard', layout='wide')
 #         ['dialogue', 'client_dialogue', 'customer_dialogue', 'level_3', 'level_2', 'level_3_id', 'level_2_id']
 #     ]
 #     return df
+
+
+# @st.cache
+# def chi_feature(pipeline, N=10):
+#     df = pd.read_csv('./data/esaleshub-tr.csv')
+#     features = pipeline['vect'].transform(df['dialogue'].tolist())
+#     features = pipeline['tfidf'].transform(features)
+#     labels = df['level_3_id']
+#     for level, idx in sorted(LEVEL2INDEX.items()):
+#         features_chi2 = chi2(features.toarray(), labels == idx)
+#         indices = np.argsort(features_chi2[0])
+#         feature_names = np.array(pipeline['vect'].get_feature_names_out())[indices]
+#         unigrams = [v for v in feature_names if len(v.split(' ')) == 1]
+#         bigrams = [v for v in feature_names if len(v.split(' ')) == 2]
+#         print("#{}:".format(level))
+#         print(" - Most correlated unigrams: {}".format(', '.join(unigrams[-N:])))
+#         print(" - Most correlated bigrams: {}".format(', '.join(bigrams[-N:])))
+#         print('-' * 100)
+#     return unigrams[-N:]
 
 
 def tokeniser(text):
@@ -58,10 +78,6 @@ def main():
          - `customer_service_call_cancellation` 
     """)
 
-    text_input = {
-        'Full': 'dialogue', 'Agent': 'client_dialogue', 'Customer': 'customer_dialogue'
-    }
-
     with open(f'./checkpoints/pipeline_{algo.lower()}_{text.lower()}.pkl', 'rb') as f:
         pipeline = pickle.load(f)
     
@@ -79,12 +95,10 @@ def main():
             'proba': proba
         })
 
-        message = ''
-        for v, t in zip(top_3_values, top_3_types):
-            message += f'{t}: {v*100:.2f}% \n'
-        print(message)
+        tokens = word_tokenize(dialogue)
+        # unigrams = chi_feature(pipeline)
 
-        fig = px.bar(proba_df, y='proba', x='call_types', text_auto='.2f')
+        fig = px.bar(proba_df, y='proba', x='call_types', text_auto='.4f')
         fig.update_layout(
             title={'text': f'{algo}', 'xanchor': 'center', 'yanchor': 'top'}, 
             xaxis_title="Call types",
