@@ -60,7 +60,7 @@ def main():
         index=0
     )
     text = st.sidebar.selectbox(
-        'Text input: ', 
+        'Dialogue: ', 
         ['Full', 'Agent', 'Customer'], 
         index=0
     )
@@ -83,7 +83,8 @@ def main():
     
     # ---- MAINPAGE ----
     st.title("DEMO")
-    dialogue = st.text_area('Please input dialogue: ', '')
+    dialogue = st.text_area('Please input dialogue: ', '', height=200)
+
     if st.button('Predict'):
         proba = pipeline.predict_proba([dialogue])[0]
         top_3_idx = np.argsort(proba)[-3:]
