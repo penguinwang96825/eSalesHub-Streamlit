@@ -36,7 +36,7 @@ def main():
     st.sidebar.header("Configuration")
     algo = st.sidebar.selectbox(
         'Algorithms: ', 
-        ['XGBoost', 'LogisticRegression', 'SGDClassifier', 'RandomForestClassifier'], 
+        ['XGBoost', 'LogisticRegression', 'SGDClassifier'], 
         index=0
     )
     text = st.sidebar.selectbox(
