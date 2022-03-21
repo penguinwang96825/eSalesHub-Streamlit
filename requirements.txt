@@ -5,5 +5,6 @@ plotly==5.6.0
 pysbd==0.3.4
 scikit-learn==1.0.2
 streamlit==1.7.0
+swifter==1.1.2
 tqdm==4.63.0
 xgboost==1.5.2
