@@ -24,25 +24,6 @@ st.set_page_config(page_title='eSalesHub Dashboard', layout='wide')
 #     return df
 
 
-# @st.cache
-# def chi_feature(pipeline, N=10):
-#     df = pd.read_csv('./data/esaleshub-tr.csv')
-#     features = pipeline['vect'].transform(df['dialogue'].tolist())
-#     features = pipeline['tfidf'].transform(features)
-#     labels = df['level_3_id']
-#     for level, idx in sorted(LEVEL2INDEX.items()):
-#         features_chi2 = chi2(features.toarray(), labels == idx)
-#         indices = np.argsort(features_chi2[0])
-#         feature_names = np.array(pipeline['vect'].get_feature_names_out())[indices]
-#         unigrams = [v for v in feature_names if len(v.split(' ')) == 1]
-#         bigrams = [v for v in feature_names if len(v.split(' ')) == 2]
-#         print("#{}:".format(level))
-#         print(" - Most correlated unigrams: {}".format(', '.join(unigrams[-N:])))
-#         print(" - Most correlated bigrams: {}".format(', '.join(bigrams[-N:])))
-#         print('-' * 100)
-#     return unigrams[-N:]
-
-
 def tokeniser(text):
     text = clean_dialogue(text)
     return word_tokenize(text)
@@ -61,10 +42,11 @@ def main():
     )
     text = st.sidebar.selectbox(
         'Dialogue: ', 
-        ['Full', 'Agent', 'Customer'], 
+        ['Full', 'Agent', 'Customer', 'Siamese'], 
         index=0
     )
 
+    st.sidebar.write('---')
     st.sidebar.header('Remarks')
     st.sidebar.markdown("""
         There are eight different call types in default to train the selected algorithm.
@@ -78,15 +60,39 @@ def main():
          - `customer_service_call_cancellation` 
     """)
 
-    with open(f'./checkpoints/pipeline_{algo.lower()}_{text.lower()}.pkl', 'rb') as f:
-        pipeline = pickle.load(f)
+    try:
+        with open(f'./checkpoints/pipeline_{algo.lower()}_{text.lower()}.pkl', 'rb') as f:
+            pipeline = pickle.load(f)
+    except:
+        pipeline = None
     
     # ---- MAINPAGE ----
     st.title("DEMO")
-    dialogue = st.text_area('Please input dialogue: ', '', height=200)
+    st.write("""
+        This project is to apply natural language processing techniques to 
+        categorise the complaint. The challenge in this project is in the 
+        cleaning of the data. The transcript of client and customer is extracted 
+        from AWS automatic speech recognition (ASR) service, which can convert 
+        speech to text. Therefore, this is bound to make mistakes pretty often.
+    """)
+    st.write('---')
+
+    if text != 'Siamese':
+        dialogue = st.text_area(f'Please input {text.lower()} dialogue: ', '', height=200)
+    else: 
+        left_col, right_col = st.columns([1, 1])
+        client_dialogue = left_col.text_area("Please input client's dialogue: ", '', height=200)
+        customer_dialogue = right_col.text_area("Please input customer's dialogue: ", '', height=200)
 
     if st.button('Predict'):
-        proba = pipeline.predict_proba([dialogue])[0]
+        if text != 'Siamese':
+            proba = pipeline.predict_proba([dialogue])[0]
+        else:
+            tmp = pd.DataFrame({
+                'client_dialogue': [client_dialogue], 
+                'customer_dialogue': [customer_dialogue]
+            })
+            proba = pipeline.predict_proba(tmp)[0]
         top_3_idx = np.argsort(proba)[-3:]
         top_3_idx = top_3_idx[::-1]
         top_3_values = [proba[i] for i in top_3_idx]
@@ -95,9 +101,6 @@ def main():
             'call_types': LEVEL2INDEX.keys(), 
             'proba': proba
         })
-
-        tokens = word_tokenize(dialogue)
-        # unigrams = chi_feature(pipeline)
 
         fig = px.bar(proba_df, y='proba', x='call_types', text_auto='.4f')
         fig.update_layout(
