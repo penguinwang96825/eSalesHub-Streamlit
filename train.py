@@ -4,6 +4,7 @@ import swifter
 import pandas as pd
 import matplotlib.pyplot as plt
 from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
 from sklearn import metrics
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import CountVectorizer
@@ -39,8 +40,9 @@ def tokeniser(text):
 
 
 def siamese():
-    algo = 'XGBClassifier'
+    # algo = 'XGBClassifier'
     # algo = 'LogisticRegression'
+    algo = 'LGBMClassifier'
 
     train_df = pd.read_csv('./data/esaleshub-tr.csv')
     test_df = pd.read_csv('./data/esaleshub-tt.csv')
@@ -64,6 +66,9 @@ def siamese():
             max_depth=10, 
             n_jobs=-1, 
             eval_metric='mlogloss'
+        ), 
+        'LGBMClassifier': LGBMClassifier(
+            #n_estimators=200, max_depth=10, n_jobs=-1
         ), 
         'LogisticRegression': LogisticRegression(
             max_iter=1000, n_jobs=-1
@@ -100,10 +105,14 @@ def siamese():
 
 
 def main():
-    algo = 'XGBClassifier'
-    text = 'Full'
+    algo = 'LGBMClassifier'
+    text = 'Customer'
 
     df = get_esaleshub_data()
+
+    df['customer_dialogue'] = df['customer_dialogue'].swifter.apply(clean_dialogue)
+    df['client_dialogue'] = df['client_dialogue'].swifter.apply(clean_dialogue)
+    df['dialogue'] = df['dialogue'].swifter.apply(clean_dialogue)
 
     algo_mapping = {
         'XGBClassifier': XGBClassifier(
@@ -111,6 +120,9 @@ def main():
             max_depth=10, 
             n_jobs=-1, 
             eval_metric='mlogloss'
+        ), 
+        'LGBMClassifier': LGBMClassifier(
+            n_jobs=-1
         ), 
         'LogisticRegression': LogisticRegression(
             max_iter=1000, n_jobs=-1
@@ -134,7 +146,7 @@ def main():
                 encoding='latin-1', 
                 ngram_range=(1, 2), 
                 stop_words='english', 
-                tokenizer=tokeniser
+                # tokenizer=tokeniser
             )),
             ("tfidf", TfidfTransformer(
                 sublinear_tf=True, 
@@ -143,38 +155,40 @@ def main():
             ("clf", algo_mapping[algo])
         ]
     )
-    # pipeline.fit(X_train, y_train)
 
-    scores = cross_validate(
-        pipeline, 
-        df[text_input[text]].tolist(), 
-        df['level_3_id'].tolist(), 
-        cv=10, 
-        return_train_score=True, 
-        n_jobs=-1, 
-        verbose=10
-    )
-    scores_df = pd.DataFrame(scores)
-    print(scores_df)
-
-    plt.figure(figsize=(10, 5))
-    scores_df[['train_score', 'test_score']].boxplot()
-    plt.show()
-
-    # y_pred = pipeline.predict(X_test)
-    # y_prob = pipeline.predict_proba(X_test)
-    
-    # acc = metrics.accuracy_score(y_test, y_pred)
-    # f1 = metrics.f1_score(y_test, y_pred, average='weighted')
-    # acc3 = metrics.top_k_accuracy_score(y_test, y_prob, k=3)
-
-    # print(
-    #     f'Acc: {acc:.4f}\n'
-    #     f'F1: {f1:.4f}\n'
-    #     f'Acc@3: {acc3:.4f}\n'
+    # scores = cross_validate(
+    #     pipeline, 
+    #     df[text_input[text]].tolist(), 
+    #     df['level_3_id'].tolist(), 
+    #     cv=10, 
+    #     return_train_score=True, 
+    #     n_jobs=-1, 
+    #     verbose=10
     # )
-    # with open(f'./checkpoints/pipeline_{algo.lower()}_{text.lower()}.pkl', 'wb') as f:
-    #     pickle.dump(pipeline, f)
+    # scores_df = pd.DataFrame(scores)
+    # print(scores_df)
+
+    # plt.figure(figsize=(10, 5))
+    # scores_df[['train_score', 'test_score']].boxplot()
+    # plt.show()
+
+    pipeline.fit(X_train, y_train)
+
+    y_pred = pipeline.predict(X_test)
+    y_prob = pipeline.predict_proba(X_test)
+    
+    acc = metrics.accuracy_score(y_test, y_pred)
+    f1 = metrics.f1_score(y_test, y_pred, average='weighted')
+    acc3 = metrics.top_k_accuracy_score(y_test, y_prob, k=3)
+
+    print(
+        f'Acc: {acc:.4f}\n'
+        f'F1: {f1:.4f}\n'
+        f'Acc@3: {acc3:.4f}\n'
+    )
+
+    with open(f'./checkpoints/pipeline_{algo.lower()}_{text.lower()}.pkl', 'wb') as f:
+        pickle.dump(pipeline, f)
 
 
 if __name__ == '__main__':
