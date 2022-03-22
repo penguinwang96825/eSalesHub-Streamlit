@@ -1,6 +1,7 @@
 import gc
 import os
 import swifter
+import pickle
 import warnings
 import numpy as np
 import pandas as pd
@@ -22,12 +23,22 @@ df_tr = pd.read_csv('./data/esaleshub-tr.csv')
 df_tt = pd.read_csv('./data/esaleshub-tt.csv')
 df_tr['customer_dialogue'] = df_tr['customer_dialogue'].swifter.apply(clean_dialogue)
 df_tr['client_dialogue'] = df_tr['client_dialogue'].swifter.apply(clean_dialogue)
+df_tr['dialogue'] = [d1 + d2 for d1, d2 in zip(df_tr['client_dialogue'], df_tr['customer_dialogue'])]
 df_tt['customer_dialogue'] = df_tt['customer_dialogue'].swifter.apply(clean_dialogue)
 df_tt['client_dialogue'] = df_tt['client_dialogue'].swifter.apply(clean_dialogue)
+df_tt['dialogue'] = [d1 + d2 for d1, d2 in zip(df_tt['client_dialogue'], df_tt['customer_dialogue'])]
 
 # df = pd.read_csv('./data/esaleshub.csv')
 # df['customer_dialogue'] = df['customer_dialogue'].swifter.apply(clean_dialogue)
 # df['client_dialogue'] = df['client_dialogue'].swifter.apply(clean_dialogue)
+
+algo = 'XGBClassifier'
+text = 'Full'
+text_input = {
+    'Full': 'dialogue', 
+    'Agent': 'client_dialogue', 
+    'Customer': 'customer_dialogue'
+}
 
 
 # Objective function to optimise
@@ -41,7 +52,7 @@ def objective(params):
     )
     pipeline = Pipeline(
         [
-            ("vect", column_transformer), 
+            ("vect", TfidfVectorizer(sublinear_tf=True)), 
             ('scaler', MaxAbsScaler()), 
             ("clf", xgb.XGBClassifier(n_jobs=-1, eval_metric='mlogloss', **params))
         ], 
@@ -54,7 +65,7 @@ def objective(params):
 
     scores = cross_val_score(
         pipeline, 
-        df_tr, df_tr['level_3_id'], 
+        df_tr[text_input[text]], df_tr['level_3_id'], 
         # cv=BootstrapOutOfBag(random_seed=914), 
         cv=3, 
         # https://scikit-learn.org/stable/modules/model_evaluation.html#scoring-parameter
@@ -70,6 +81,7 @@ def objective(params):
 
 
 def main():
+    # XGBClassifier hyperparameters space
     space = {
         'n_estimators': 200, 
         'eta': hp.quniform('eta', 0.025, 0.25, 0.025),
@@ -108,13 +120,13 @@ def main():
     )
     pipeline = Pipeline(
         [
-            ("vect", column_transformer), 
+            ("vect", TfidfVectorizer(sublinear_tf=True)), 
             ('scaler', MaxAbsScaler()), 
             ("clf", xgb.XGBClassifier(n_jobs=-1, eval_metric='mlogloss', **best))
         ], 
         verbose=True
     )
-    pipeline.fit(df_tr, df_tr['level_3_id'])
+    pipeline.fit(df_tr[text_input[text]], df_tr['level_3_id'])
 
     y_pred = pipeline.predict(df_tt)
     y_prob = pipeline.predict_proba(df_tt)
@@ -129,6 +141,9 @@ def main():
         f'F1: {f1:.4f}\n'
         f'Acc@3: {acc3:.4f}\n'
     )
+
+    with open(f'./checkpoints/pipeline_{algo.lower()}_{text.lower()}.pkl', 'wb') as f:
+        pickle.dump(pipeline, f)
 
 
 if __name__ == '__main__':
