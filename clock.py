@@ -1,8 +1,8 @@
 import requests
-from apscheduler.scheduler.blocking import BlcokingScheduler
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 
-scheduler = BlcokingScheduler()
+scheduler = BlockingScheduler()
 
 
 @scheduler.scheduled_job('interval', minutes=15)
