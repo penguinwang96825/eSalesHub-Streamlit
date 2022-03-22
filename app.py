@@ -39,7 +39,7 @@ def main():
     )
     text = st.sidebar.selectbox(
         'Dialogue: ', 
-        ['Full', 'Agent', 'Customer', 'Siamese'], 
+        ['Full', 'Agent', 'Customer', 'Dual'], 
         index=0
     )
 
@@ -56,6 +56,13 @@ def main():
          - `customer_service_call_general` 
          - `customer_service_call_cancellation` 
     """)
+    st.sidebar.write("""
+        This project is to apply natural language processing techniques to 
+        categorise the complaint. The challenge in this project is in the 
+        cleaning of the data. The transcript of client and customer is extracted 
+        from AWS automatic speech recognition (ASR) service, which can convert 
+        speech to text. Therefore, this is bound to make mistakes pretty often.
+    """)
 
     try:
         with open(f'./checkpoints/pipeline_{algo.lower()}_{text.lower()}.pkl', 'rb') as f:
@@ -65,16 +72,8 @@ def main():
     
     # ---- MAINPAGE ----
     st.title("DEMO")
-    st.write("""
-        This project is to apply natural language processing techniques to 
-        categorise the complaint. The challenge in this project is in the 
-        cleaning of the data. The transcript of client and customer is extracted 
-        from AWS automatic speech recognition (ASR) service, which can convert 
-        speech to text. Therefore, this is bound to make mistakes pretty often.
-    """)
-    st.write('---')
 
-    if text != 'Siamese':
+    if text != 'Dual':
         dialogue = st.text_area(f'Please input {text.lower()} dialogue: ', '', height=200)
     else: 
         left_col, right_col = st.columns([1, 1])
@@ -82,7 +81,7 @@ def main():
         customer_dialogue = right_col.text_area("Please input customer's dialogue: ", '', height=200)
 
     if st.button('Predict'):
-        if text != 'Siamese':
+        if text != 'Dual':
             proba = pipeline.predict_proba([dialogue])[0]
         else:
             tmp = pd.DataFrame({
