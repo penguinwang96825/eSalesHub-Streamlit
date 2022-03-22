@@ -15,13 +15,10 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 st.set_page_config(page_title='eSalesHub Dashboard', layout='wide')
 
 
-# @st.cache(allow_output_mutation=True)
-# def get_esaleshub_data():
-#     df = pd.read_csv('./data/esaleshub.csv')
-#     df = df[
-#         ['dialogue', 'client_dialogue', 'customer_dialogue', 'level_3', 'level_2', 'level_3_id', 'level_2_id']
-#     ]
-#     return df
+@st.cache
+def get_esaleshub_data():
+    df = pd.read_csv('./data/esaleshub.csv')
+    return df
 
 
 def tokeniser(text):
@@ -37,7 +34,7 @@ def main():
     st.sidebar.header("Configuration")
     algo = st.sidebar.selectbox(
         'Algorithms: ', 
-        ['XGBClassifier', 'LogisticRegression'], 
+        ['XGBClassifier', 'LGBMClassifier', 'LogisticRegression'], 
         index=0
     )
     text = st.sidebar.selectbox(
